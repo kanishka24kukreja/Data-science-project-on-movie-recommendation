@@ -1,0 +1,59 @@
+#importing libraries
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
+
+#creating files
+column_names = ['UserID', 'ItemID', 'Rating', 'Timestamp']
+df = pd.read_csv(r"C:\Users\anmol\Downloads\u.data", sep='\t', names=column_names)
+movie_titles = pd.read_csv(r"C:\Users\anmol\Downloads\u.item", sep='|', header=None, encoding='ISO-8859-1')
+movie_titles = movie_titles[[0, 1]]
+movie_titles.columns = ['ItemID', 'title']
+
+
+df = pd.merge(df, movie_titles, on='ItemID')
+
+print(df.head())
+
+ratings = pd.DataFrame(df.groupby('title').mean()['Rating'].sort_values(ascending=False))
+ratings['count of people who rated'] = df.groupby('title').count()['Rating'].sort_values(ascending=False)
+print(ratings.head())
+
+# Plot histograms for count of people who rated and rating distribution
+plt.figure(figsize=(10,4))
+plt.hist(ratings['count of people who rated'], bins=50)
+plt.title('Distribution of Rating Counts')
+plt.xlabel('Number of Ratings')
+plt.ylabel('Frequency')
+plt.show()
+
+plt.figure(figsize=(10,4))
+plt.hist(ratings['Rating'], bins=50)
+plt.title('Distribution of Movie Ratings')
+plt.xlabel('Average Rating')
+plt.ylabel('Frequency')
+plt.show()
+
+# Movie recommendation system
+moviemat = df.pivot_table(index='UserID', columns='title', values='Rating')
+print(moviemat.head())
+
+# Select a movie (Star Wars) to find its correlations with other movies
+starwar_rate = moviemat['Star Wars (1977)']
+
+# Calculate the correlation of other movies with Star Wars ratings
+similarity_starwar = moviemat.corrwith(starwar_rate, method='pearson')
+
+# Convert the result to a DataFrame and drop NaN values
+corr = pd.DataFrame(similarity_starwar, columns=['correlation'])
+corr.dropna(inplace=True)
+
+# Join the ratings count to the correlation dataframe
+corr = corr.join(ratings['count of people who rated'])
+
+# Filter movies with more than 100 ratings
+filter_movie = corr[corr['count of people who rated'] > 100].sort_values(by='correlation', ascending=False)
+
+# Output the top correlated movies
+print(filter_movie.head())
